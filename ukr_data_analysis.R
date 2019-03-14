@@ -4,7 +4,8 @@
 
 library(readr)
 library(dplyr)
-
+library("stringr", lib.loc="/Library/Frameworks/R.framework/Versions/3.5/Resources/library")
+library("plotly", lib.loc="/Library/Frameworks/R.framework/Versions/3.5/Resources/library")
 ################################################################################
 ######################## Import educational dataset  ###########################
 ################################################################################
@@ -49,7 +50,6 @@ education_UKR_2012_2018 <- select (education_UKR_2012_2018,-c(`Level of educatio
                                                               `Type of contract`,
                                                               `Reference area`, 
                                                               `Time Period`))
-
 View(education_UKR_2012_2018)
 
 ################################################################################
@@ -65,13 +65,127 @@ urban_rural_area <- filter(education_UKR_2012_2018, (
                                                   # & (`Wealth quintile` !="_T:Total")
                                                    )
                          )
+View(urban_rural_area)
 
-urban_rural_area %>%
-  filter(str_detect(`Statistical unit`, "attendance"))%>%
+##################################################
+########### Males in Rural area   ################
+##################################################
+
+# Here I select data about males in Rural area
+rural_area_male <-urban_rural_area %>%
+  filter(`Sex`=="M:Male")%>%
+  filter(`Statistical unit`=="NAR:Net attendance rate")%>%
+  filter(str_detect(`Unit of measure`, "Percentage"))%>%
+  filter(str_detect(`Location`, "Rural"))%>%
+  select_if(~ length(unique(.)) > 1) 
+
+# Create a general variable  - concatanation of education and wealth
+rural_area_male$`Educ_wealth_male` <- paste(rural_area_male$`Level of education`,"_",rural_area_male$`Wealth quintile`)
+
+# delete variables education and wealth
+rural_area_male <- select(rural_area_male,-c(1,2))
+
+# Order variables
+rural_area_male <- rural_area_male[order(rural_area_male$`Educ_wealth_male`),]
+
+#Swap data
+rural_area_male <-rural_area_male[ ,c(2,1)]
+
+##################################################
+########### Females in Rural area   ################
+##################################################
+
+# Here I select data about females in Rural area
+rural_area_female <-urban_rural_area %>%
+  filter(`Sex`=="F:Female")%>%
+  filter(`Statistical unit`=="NAR:Net attendance rate")%>%
+  filter(str_detect(`Unit of measure`, "Percentage"))%>%
+  filter(str_detect(`Location`, "Rural"))%>%
+  select_if(~ length(unique(.)) > 1) 
+
+# Create a general variable  - concatanation of education and wealth
+rural_area_female$`Educ_wealth_female` <- paste(rural_area_female$`Level of education`,"_",rural_area_female$`Wealth quintile`)
+
+# delete variables education and wealth
+rural_area_female <-select(rural_area_female,-c(1,2))
+
+# Order variables
+rural_area_female <- rural_area_female[order(rural_area_female$`Educ_wealth_female`),]
+
+#Swap data
+rural_area_female <-rural_area_female[,c(2,1)]
+rural_area_female
+
+##################################################
+########### Males in Urban area   ################
+##################################################
+
+# Here I select data about males in Rural area
+urban_area_male <-urban_rural_area %>%
+  filter(`Sex`=="M:Male")%>%
+  filter(`Statistical unit`=="NAR:Net attendance rate")%>%
+  filter(str_detect(`Unit of measure`, "Percentage"))%>%
+  filter(str_detect(`Location`, "Urban"))%>%
   select_if(~ length(unique(.)) > 1) 
 
 
+# Create a general variable  - concatanation of education and wealth
+urban_area_male$`Educ_wealth_male` <- paste(urban_area_male$`Level of education`,"_",urban_area_male$`Wealth quintile`)
 
-View(urban_rural_area)
+# delete variables education and wealth
+urban_area_male <- select(urban_area_male,-c(1,2))
+
+# Order variables
+urban_area_male <- urban_area_male[order(urban_area_male$`Educ_wealth_male`),]
+
+#Swap data
+urban_area_male <-urban_area_male[,c(2,1)]
+urban_area_male
+
+##################################################
+########### Females in Urban area   ################
+##################################################
+
+# Here I select data about females in Rural area
+urban_area_female <-urban_rural_area %>%
+  filter(`Sex`=="F:Female")%>%
+  filter(`Statistical unit`=="NAR:Net attendance rate")%>%
+  filter(str_detect(`Unit of measure`, "Percentage"))%>%
+  filter(str_detect(`Location`, "Urban"))%>%
+  select_if(~ length(unique(.)) > 1) 
+
+# Create a general variable  - concatanation of education and wealth
+urban_area_female$`Educ_wealth_female` <- paste(urban_area_female$`Level of education`,"_",urban_area_female$`Wealth quintile`)
+
+# delete variables education and wealth
+urban_area_female <-select(urban_area_female,-c(1,2))
+
+# Order variables
+urban_area_female <- urban_area_female[order(urban_area_female$`Educ_wealth_female`),]
+
+#Swap data
+urban_area_female <-urban_area_female[,c(2,1)]
+urban_area_female
+
+# Create new data frame that combine male and female in urban and rural data 
+urban_rural_area_male_female <-urban_area_male
+urban_rural_area_male_female <-cbind(urban_rural_area_male_female, rural_area_male[,2])
+urban_rural_area_male_female <-cbind(urban_rural_area_male_female, urban_area_female[,2])
+urban_rural_area_male_female <-cbind(urban_rural_area_male_female, rural_area_female[,2])
+
+urban_rural_area_male_female
+
+colnames(urban_rural_area_male_female) <- c("Educ_wealth", "2013-male-urban", "2013-male-rural","2013-female-urban" , "2013-female-rural")
+View(urban_rural_area_male_female)
+
+# Plot male and female in urban and rural data 
+p <- plot_ly(urban_rural_area_male_female, x = ~`Educ_wealth`, y = ~`2013-male-urban`, type = 'bar', name = 'Males in urban area') %>%
+  add_trace(y = ~`2013-male-rural`, name = 'Males in rural area') %>%
+  #add_trace(y = ~`2013-female-urban`, name = 'Females in urban area') %>%
+  #add_trace(y = ~`2013-female-rural`, name = 'Females in rural area') %>%
+  layout(yaxis = list(title = 'Count'), barmode = 'group')
+p
+
+
 
 
