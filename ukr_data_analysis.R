@@ -187,5 +187,5 @@ p <- plot_ly(urban_rural_area_male_female, x = ~`Educ_wealth`, y = ~`2013-male-u
 p
 
 
-
-
+median_primar_male_urban <-urban_rural_area_male_female[1:5,2]
+mean(median_primar_male_urban)
