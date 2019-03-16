@@ -298,5 +298,256 @@ p <- plot_ly(final_df,    type = 'scatter', mode = 'markers') %>%
 p
 
 
+################################################################################
+##### Question 3: Make cluster analysis of the countries where Ukrainian  ######
+############# student will preferably go depending on educational level  #######
+################ (bac, license, master) over the years 2012-2018. ##############
+################################################################################
+
+students_from_country <- education_UKR_2012_2018 %>% 
+  filter(`Country / region of origin` != "W00:All countries") %>%
+  select_if(~ length(unique(.)) > 1) 
+View(students_country)
 
 
+ 
+students_to_country <- education_UKR_2012_2018 %>% 
+  filter(`Destination region` != "W00:All countries") %>%
+  select_if(~ length(unique(.)) > 1)
+
+
+
+# check what unique statistical units we can use for data exploration
+unique_value_students_to_country<-students_to_country[1]%>%
+  unique()
+unique_value_students_to_country
+
+
+# I want to check dependencies for "OE:Outbound internationally mobile students"
+students_to_country_mobile <- students_to_country %>% 
+  filter(`Statistical unit` == "OE:Outbound internationally mobile students") %>%
+  select_if(~ length(unique(.)) > 1)
+students_to_country_mobile
+
+
+scaled.dat <- scale(t(students_to_country_mobile[,-1]))
+scaled.dat
+# so, it will be level of similarity to go to specific country over the years. But why? languages, cultural stuf, money, any kind of educational programs and diplomas
+euroclust<-hclust(dist(t(scaled.dat)))
+euroclust
+plot(euroclust, labels=students_to_country_mobile$`Destination region`)
+
+
+
+
+
+# re-structure data
+
+final_df_students_mobile <- t(students_to_country_mobile)
+final_df_students_mobile
+final_df_students_mobile <- apply(final_df_students_mobile[-c(1), ],1,function(x) log(as.numeric(x)))
+final_df_students_mobile <- t(final_df_students_mobile)
+final_df_students_mobile[(final_df_students_mobile == -Inf)] <- 0
+final_df_students_mobile
+years <-c(2012:2017)
+final_df_students_mobile <-data.frame(years,final_df_students_mobile)
+final_df_students_mobile
+colnames(final_df_students_mobile) <-c("years","Sub_Saharan_Africa", "South_and_West_Asia", "Oceania", "Central_and_Eastern_Europe", "Central_Asia", "East_Asia", "Latin_America", "North_America_and_Western_Europe", "East_Asia_and_the_Pacific", "Arab_States","Latin_America_and_the_Caribbean")
+final_df_students_mobile
+
+p <- plot_ly(final_df_students_mobile,    type = 'scatter', mode = 'lines') %>%
+  add_trace(x = ~`years`,y = ~`Sub-Saharan Africa`, name = 'Sub-Saharan Africa') %>%
+  add_trace(x = ~`years`,y = ~`South and West Asia`, name = 'South and West Asia') %>%
+  add_trace(x = ~`years`,y = ~`Oceania`, name = 'Oceania') %>%
+  add_trace(x = ~`years`,y = ~`Central and Eastern Europe`, name = 'Central and Eastern Europe') %>%
+  add_trace(x = ~`years`,y = ~`Central Asia`, name = 'Central Asia') %>%
+  add_trace(x = ~`years`,y = ~`East Asia`, name = 'East Asia') %>%
+  add_trace(x = ~`years`,y = ~`Latin America`, name = 'Latin America') %>%
+  add_trace(x = ~`years`,y = ~`North America and Western Europe`, name = 'North America and Western Europe') %>%
+  add_trace(x = ~`years`,y = ~`East Asia and the Pacific`, name = 'East Asia and the Pacific') %>%
+  add_trace(x = ~`years`,y = ~`Arab States`, name = 'Arab States') %>%
+  add_trace(x = ~`years`,y = ~`Latin America and the Caribbean`, name = 'Latin America and the Caribbean') %>%
+  layout(
+    title = "International mobility",
+    yaxis = list(title = "Number of departing people (log scaled)"))
+p
+
+
+# regression 
+students_to_country_mobile
+students_to_country_mobile_norm <-students_to_country_mobile[-c(1)]
+students_to_country_mobile_norm
+students_to_country_mobile_norm <- t(apply(students_to_country_mobile_norm,1,function(x) log(as.numeric(x))))
+students_to_country_mobile_norm
+scatter.smooth(x=students_to_country_mobile_norm[,1], y=students_to_country_mobile_norm[,2], main="Latin America ~ Western Europe")
+
+# has no meaning
+
+students_to_country_mobile_norm <- as.data.frame(students_to_country_mobile_norm)
+students_to_country_mobile_norm
+
+
+
+
+final_df_students_mobile
+library("ggpubr")
+require(gridExtra)
+plot1 <- ggscatter(final_df_students_mobile, x="years", y = "Oceania", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "pearson",
+          xlab = "years", ylab = "Oceania")
+plot2 <- ggscatter(final_df_students_mobile, x="years", y = "North_America_and_Western_Europe", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "pearson",
+          xlab = "years", ylab = "North_America_and_Western_Europe")
+plot3 <- ggscatter(final_df_students_mobile, x="years", y = "Arab_States", 
+                   add = "reg.line", conf.int = TRUE, 
+                   cor.coef = TRUE, cor.method = "pearson",
+                   xlab = "years", ylab = "East_Asia")
+grid.arrange(plot1, plot2, plot3)
+
+
+
+################################################################################
+### Question 4: Discover patterns about preferred fields of studies for a ######
+############# male/female student  over the years (2012-2018) and make a   #######
+################ prognosis about 2019.##############
+################################################################################
+
+
+educ_patters <- education_UKR_2012_2018 %>% 
+  filter(`Field of education` != "_T:Total") %>% 
+  filter(`Field of education` != "_X:Unspecified") %>% 
+  filter(`Field of education` != "_Z:Not applicable") %>% 
+  filter(`Sex` != "_T:Total") %>% 
+  select_if(~ length(unique(.)) > 1) 
+  
+View(educ_patters)
+
+educ_patterns_tertiary <- educ_patters %>% 
+  filter(`Statistical unit` == "FOSEP:Distribution of students in tertiary education by field of education") %>%
+  select_if(~ length(unique(.)) > 1) 
+
+View(educ_patterns_tertiary)
+  
+# check what unique statistical units we can use for data exploration
+unique_unit_educ_patterns_tertiary<-educ_patterns_tertiary[1]%>%
+  unique()
+unique_unit_educ_patterns_tertiary
+
+unique_field_educ_patterns_tertiary<-educ_patterns_tertiary[3]%>%
+  unique()
+unique_field_educ_patterns_tertiary
+
+# change char values to numbers
+rows_patterns <- nrow(educ_patterns_tertiary)
+rows_patterns
+# for (value in 1:rows_patterns) {
+#   if (educ_patterns_tertiary[value,2] == "F:Female") {
+#     educ_patterns_tertiary[value,2] = 1
+#   }else{
+#     educ_patterns_tertiary[value,2] = 2
+#   }
+# }
+educ_patterns_tertiary
+
+
+#Swap data
+educ_patterns_tertiary <-educ_patterns_tertiary[ ,c(3,1,2,4,5,6)]
+educ_patterns_tertiary
+
+# Order variables
+educ_patterns_tertiary <- educ_patterns_tertiary[order(educ_patterns_tertiary$`Field of education`),]
+educ_patterns_tertiary
+
+
+#append extra variable
+Value <-c(1:40)
+educ_patterns_tertiary <-data.frame(Value,educ_patterns_tertiary)
+educ_patterns_tertiary
+
+glimpse(educ_patterns_tertiary)
+
+educ_patterns_tertiary <- educ_patterns_tertiary%>%
+  mutate(Field.of.education = factor(Field.of.education)) %>%
+  mutate(Level.of.education = factor(Level.of.education)) %>%
+  mutate(Sex = factor(Sex))
+educ_patterns_tertiary
+glimpse(educ_patterns_tertiary)
+
+library(dplyr) # for data cleaning
+library(cluster) # for gower similarity and pam
+library(Rtsne) # for t-SNE plot
+library(ggplot2) # for visualization
+# Remove college name before clustering
+
+gower_dist <- daisy(educ_patterns_tertiary,
+                    metric = "gower")
+
+# Check attributes to ensure the correct methods are being used
+# (I = interval, N = nominal)
+# Note that despite logratio being called, 
+# the type remains coded as "I"
+
+summary(gower_dist)
+gower_mat <- as.matrix(gower_dist)
+gower_mat
+
+
+
+# Output most similar pair
+educ_patterns_tertiary[
+  which(gower_mat == min(gower_mat[gower_mat != min(gower_mat)]),
+        arr.ind = TRUE)[1, ], ]
+
+# Output most dissimilar pair
+educ_patterns_tertiary[
+  which(gower_mat == max(gower_mat[gower_mat != max(gower_mat)]),
+        arr.ind = TRUE)[1, ], ]
+
+# Calculate silhouette width for many k using PAM
+
+sil_width <- c(NA)
+
+for(i in 2:10){
+  
+  pam_fit <- pam(gower_dist,
+                 diss = TRUE,
+                 k = i)
+  
+  sil_width[i] <- pam_fit$silinfo$avg.width
+  
+}
+
+# Plot sihouette width (higher is better)
+
+plot(1:10, sil_width,
+     xlab = "Number of clusters",
+     ylab = "Silhouette Width")
+lines(1:10, sil_width)
+
+
+pam_fit <- pam(gower_dist, diss = TRUE, k = 6)
+
+pam_results <- educ_patterns_tertiary%>%
+  mutate(cluster = pam_fit$clustering) %>%
+  group_by(cluster) %>%
+  do(the_summary = summary(.))
+
+pam_results$the_summary
+
+
+educ_patterns_tertiary[pam_fit$medoids, ]
+
+
+
+tsne_obj <- Rtsne(gower_dist, perplexity = 1.5 ,is_distance = TRUE)
+
+tsne_data <- tsne_obj$Y %>%
+  data.frame() %>%
+  setNames(c("X", "Y")) %>%
+  mutate(cluster = factor(pam_fit$clustering),
+         Field.of.education = educ_patterns_tertiary$Field.of.education)
+
+ggplot(aes(x = X, y = Y), data = tsne_data) +
+  geom_point(aes(color = cluster))
