@@ -6,6 +6,11 @@ library(readr)
 library(dplyr)
 library("stringr", lib.loc="/Library/Frameworks/R.framework/Versions/3.5/Resources/library")
 library("plotly", lib.loc="/Library/Frameworks/R.framework/Versions/3.5/Resources/library")
+library(naniar)
+library(VIM)
+library(FactoMineR)
+library(missMDA)
+
 ################################################################################
 ######################## Import educational dataset  ###########################
 ################################################################################
@@ -189,3 +194,109 @@ p
 
 median_primar_male_urban <-urban_rural_area_male_female[1:5,2]
 mean(median_primar_male_urban)
+
+
+################################################################################
+#### Question 2: Make an analysis of teachers’ qualification over the years ####
+############# depending on sex and educational institutions level. #############
+################################################################################
+
+teachers_data <- education_UKR_2012_2018 %>% 
+  filter(str_detect(`Statistical unit`, "teacher")) %>%
+  select_if(~ length(unique(.)) > 1)
+View(teachers_data)
+
+
+#number of bullied students
+bullied_students <- education_UKR_2012_2018 %>% 
+  filter(`Statistical unit` == "BULLIED_STU:Bullied students") 
+View(bullied_students)
+
+
+
+
+# check what unique statistical units we can use for data exploration
+unique_value_teachers_data_units<-teachers_data[1]%>%
+  unique()
+unique_value_teachers_data_units
+
+
+# select only the data in %
+teachers_data_perc <- teachers_data%>% 
+  filter(str_detect(`Unit of measure`, "PT:Percentage")) 
+  #select_if(~ length(unique(.)) > 1)
+View(teachers_data_perc)
+
+
+
+
+
+qualified_trained_teachers <- education_UKR_2012_2018 %>% 
+  filter(`Statistical unit` == "FTP:Percentage of female teachers") %>%
+  select_if(~ length(unique(.)) > 1)
+View(qualified_trained_teachers)
+
+
+
+
+
+
+
+
+# try to get information about what rows has less missing values
+teachers_data_no_missing_vals <- teachers_data[which.max(rowSums(!is.na(teachers_data))),]
+View(teachers_data_no_missing_vals)
+
+# we've discovered that for statistical unit : "PTR:Pupil-teacher ratio" we have the smallest number 
+# of missing values, try to get all connected relevant data
+pupil_teacher_ratio<- teachers_data %>%
+  filter(`Statistical unit`=="PTR:Pupil-teacher ratio")%>%
+  filter(`Orientation`=="_T:Total")%>%
+  select_if(~ length(unique(.)) > 1) 
+pupil_teacher_ratio
+
+# Order variables
+pupil_teacher_ratio <- pupil_teacher_ratio[order(pupil_teacher_ratio$`Level of education`),]
+pupil_teacher_ratio
+
+# number of missing variables
+gg_miss_var(pupil_teacher_ratio)
+
+# aggr calculates and represents the number of missing entries in each variable 
+# and for certain combinations of variables (which tend to be missing simultaneously)
+res<-summary(aggr(pupil_teacher_ratio, sortVar=TRUE))$combinations
+
+matrixplot(pupil_teacher_ratio, sortby = 1)
+
+# omit rows where more than 55% of data is missing, select data about all institutions
+pupil_teacher_ratio <- pupil_teacher_ratio[is.na(pupil_teacher_ratio)%*%rep(1,ncol(pupil_teacher_ratio))<=ncol(pupil_teacher_ratio)*0.55,]
+summary(pupil_teacher_ratio)
+pupil_teacher_ratio_all_institutions<-pupil_teacher_ratio %>%
+  filter(`Type of institution`=="INST_T:All institutions")%>%
+  select_if(~ length(unique(.)) > 1) 
+pupil_teacher_ratio_all_institutions
+
+#change all NA values to 0 values
+pupil_teacher_ratio_all_institutions[is.na(pupil_teacher_ratio_all_institutions)] <- 0
+
+# re-structure data
+final_df <- t(pupil_teacher_ratio_all_institutions)
+final_df <- final_df[-c(1), ]
+years <-c(2012:2017)
+final_df <-data.frame(years,final_df)
+colnames(final_df) <-c("years","L0:Early childhood education", "L1:Primary education", "L2_3:Secondary education", "L5T8:Tertiary education")
+final_df
+
+p <- plot_ly(final_df,    type = 'scatter', mode = 'markers') %>%
+  add_trace(x = ~`years`,y = ~`L0:Early childhood education`, name = 'L0:Early childhood education') %>%
+  add_trace(x = ~`years`,y = ~`L1:Primary education`, name = 'L1:Primary education') %>%
+  add_trace(x = ~`years`,y = ~`L2_3:Secondary education`, name = 'L2_3:Secondary education') %>%
+  add_trace(x = ~`years`,y = ~`L5T8:Tertiary education`, name = 'L5T8:Tertiary education') %>%
+  layout(
+    title = " Students teachers Ratio",
+      yaxis = list(title = "Ratio"))
+p
+
+
+
+
