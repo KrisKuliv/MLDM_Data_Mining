@@ -3,13 +3,16 @@
 ################################################################################
 
 library(readr)
-library(dplyr)
+library(dplyr) # for data cleaning
 library("stringr", lib.loc="/Library/Frameworks/R.framework/Versions/3.5/Resources/library")
 library("plotly", lib.loc="/Library/Frameworks/R.framework/Versions/3.5/Resources/library")
 library(naniar)
 library(VIM)
 library(FactoMineR)
 library(missMDA)
+library(cluster) # for gower similarity and pam
+library(Rtsne) # for t-SNE plot
+library(ggplot2) # for visualization
 
 ################################################################################
 ######################## Import educational dataset  ###########################
@@ -475,10 +478,7 @@ educ_patterns_tertiary <- educ_patterns_tertiary%>%
 educ_patterns_tertiary
 glimpse(educ_patterns_tertiary)
 
-library(dplyr) # for data cleaning
-library(cluster) # for gower similarity and pam
-library(Rtsne) # for t-SNE plot
-library(ggplot2) # for visualization
+
 # Remove college name before clustering
 
 gower_dist <- daisy(educ_patterns_tertiary,
@@ -538,8 +538,6 @@ pam_results$the_summary
 
 
 educ_patterns_tertiary[pam_fit$medoids, ]
-
-
 
 tsne_obj <- Rtsne(gower_dist, perplexity = 1.5 ,is_distance = TRUE)
 
