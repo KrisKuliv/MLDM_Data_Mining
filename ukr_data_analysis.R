@@ -2,6 +2,7 @@
 ############# Header of code file. Adding all needed libraries #################
 ################################################################################
 
+#install.packages("tictoc")
 library(readr)
 library(dplyr) # for data cleaning
 library("stringr", lib.loc="/Library/Frameworks/R.framework/Versions/3.5/Resources/library")
@@ -13,7 +14,7 @@ library(missMDA)
 library(cluster) # for gower similarity and pam
 library(Rtsne) # for t-SNE plot
 library(ggplot2) # for visualization
-
+library(tictoc)
 ################################################################################
 ######################## Import educational dataset  ###########################
 ################################################################################
@@ -23,17 +24,6 @@ class(education_UKR_2012_2018) #check the class of data we get
 education_UKR_2012_2018 = as.data.frame(education_UKR_2012_2018) #make all data to be a data.frame
 class(education_UKR_2012_2018)
 
-
-################################################################################
-######################### Deal with missing values  ############################
-################################################################################
-numb_rows <- nrow(education_UKR_2012_2018)
-numb_complete_rows <- sum(complete.cases(education_UKR_2012_2018))
-numb_rows # there are 3318 rows in the dataset
-numb_complete_rows # but only 47 rows with no NA values!
-1 - numb_complete_rows/numb_rows # so, if we are going to drop all missing values we'll loose 98% of information, that is not possible
-numb_cols <-ncol(education_UKR_2012_2018)
-numb_cols
 ################################################################################
 ############################ Data understanding  ###############################
 ################################################################################
@@ -43,10 +33,9 @@ list_of_unique_values<- list(1:numb_cols)
 list_of_unique_values
 for (name in 1:numb_cols) {
   unique_value<-education_UKR_2012_2018[name]%>%
-     unique()
+    unique()
   list_of_unique_values[[name]]<- unique_value
 }
-
 View(list_of_unique_values)
 
 # After checking the unique values we can conclude that columns "Level of educational attainment", 
@@ -59,6 +48,17 @@ education_UKR_2012_2018 <- select (education_UKR_2012_2018,-c(`Level of educatio
                                                               `Reference area`, 
                                                               `Time Period`))
 View(education_UKR_2012_2018)
+
+################################################################################
+######################### Deal with missing values  ############################
+################################################################################
+numb_rows <- nrow(education_UKR_2012_2018)
+numb_complete_rows <- sum(complete.cases(education_UKR_2012_2018))
+numb_rows # there are 3318 rows in the dataset
+numb_complete_rows # but only 47 rows with no NA values!
+1 - numb_complete_rows/numb_rows # so, if we are going to drop all missing values we'll loose 98% of information, that is not possible
+numb_cols <-ncol(education_UKR_2012_2018)
+numb_cols
 
 ################################################################################
 #### Question 1: Discover attendance patterns for urban and rural locations ####
@@ -186,17 +186,82 @@ urban_rural_area_male_female
 colnames(urban_rural_area_male_female) <- c("Educ_wealth", "2013-male-urban", "2013-male-rural","2013-female-urban" , "2013-female-rural")
 View(urban_rural_area_male_female)
 
-# Plot male and female in urban and rural data 
+# Plot male  in urban and rural data 
 p <- plot_ly(urban_rural_area_male_female, x = ~`Educ_wealth`, y = ~`2013-male-urban`, type = 'bar', name = 'Males in urban area') %>%
   add_trace(y = ~`2013-male-rural`, name = 'Males in rural area') %>%
-  #add_trace(y = ~`2013-female-urban`, name = 'Females in urban area') %>%
-  #add_trace(y = ~`2013-female-rural`, name = 'Females in rural area') %>%
-  layout(yaxis = list(title = 'Count'), barmode = 'group')
+  layout(xaxis= list(title = 'Wealth-Education level'), yaxis = list(title = 'Attendance rate in %'), barmode = 'group')
 p
 
+# Plot female in urban and rural data 
+p_fem <- plot_ly(urban_rural_area_male_female, x = ~`Educ_wealth`, y = ~`2013-female-urban`, type = 'bar', name = 'Females in urban area', marker = list(color = 'rgb(102, 0, 255)')) %>%
+  add_trace(y = ~`2013-female-rural`, name = 'Females in rural area', marker = list(color = 'rgb(204, 0, 153)')) %>%
+  layout(xaxis= list(title = 'Wealth-Education level'), yaxis = list(title = 'Attendance rate in %'), barmode = 'group')
+p_fem
 
-median_primar_male_urban <-urban_rural_area_male_female[1:5,2]
-mean(median_primar_male_urban)
+
+# Plot female in urban and rural data 
+p_gen <- plot_ly(urban_rural_area_male_female, x = ~`Educ_wealth`, y = ~`2013-male-urban`, type = 'bar', name = 'Males in urban area', marker = list(color = 'rgb(51, 153, 255)')) %>%
+  add_trace(y = ~`2013-male-rural`, name = 'Males in rural area', marker = list(color = 'rgb(0, 102, 204)')) %>%
+  add_trace(y = ~`2013-female-urban`, name = 'Females in urban area', marker = list(color = 'rgb(255, 204, 204)')) %>%
+  add_trace(y = ~`2013-female-rural`, name = 'Females in rural area', marker = list(color = 'rgb(255, 102, 102)')) %>%
+  layout(xaxis= list(title = 'Wealth-Education level'), yaxis = list(title = 'Attendance rate in %'), barmode = 'group')
+p_gen
+
+################ Mean check urban males ####################### 
+#mean attendancy value for primary education of urban males for all classes
+m_male_urban <- urban_rural_area_male_female[1:5,2]
+mean(m_male_urban[!sapply(m_male_urban, function(x)isTRUE(all.equal(x, 0)))]) 
+
+#mean attendancy value for lower-secondary education of urban males for all classes
+m_male_urban <- urban_rural_area_male_female[7:11,2]
+mean(m_male_urban[!sapply(m_male_urban, function(x)isTRUE(all.equal(x, 0)))]) 
+
+#mean attendancy value for upper-secondary education of urban males for all classes
+m_male_urban <- urban_rural_area_male_female[13:17,2]
+mean(m_male_urban[!sapply(m_male_urban, function(x)isTRUE(all.equal(x, 0)))]) 
+
+################ Mean check rural males ####################### 
+#mean attendancy value for primary education of rural males for all classes
+m_male_rural <- urban_rural_area_male_female[1:5,3]
+mean(m_male_rural[!sapply(m_male_rural, function(x)isTRUE(all.equal(x, 0)))]) 
+
+#mean attendancy value for lower-secondary education of rural males for all classes
+m_male_rural <- urban_rural_area_male_female[7:11,3]
+mean(m_male_rural[!sapply(m_male_rural, function(x)isTRUE(all.equal(x, 0)))]) 
+
+#mean attendancy value for upper-secondary education of rural males for all classes
+m_male_rural<- urban_rural_area_male_female[13:17,3]
+mean(m_male_rural[!sapply(m_male_rural, function(x)isTRUE(all.equal(x, 0)))]) 
+
+
+
+################ Mean check urban females ####################### 
+#mean attendancy value for primary education of urban females for all classes
+m_fem_urban <- urban_rural_area_male_female[1:5,4]
+mean(m_fem_urban[!sapply(m_fem_urban, function(x)isTRUE(all.equal(x, 0)))]) 
+
+#mean attendancy value for lower-secondary education of urban females for all classes
+m_fem_urban <- urban_rural_area_male_female[7:11,4]
+mean(m_fem_urban[!sapply(m_fem_urban, function(x)isTRUE(all.equal(x, 0)))]) 
+
+#mean attendancy value for upper-secondary education of urban females for all classes
+m_fem_urban <- urban_rural_area_male_female[13:17,4]
+mean(m_fem_urban[!sapply(m_fem_urban, function(x)isTRUE(all.equal(x, 0)))]) 
+
+
+################ Mean check rural females ####################### 
+#mean attendancy value for primary education of rural females for all classes
+m_fem_rur <- urban_rural_area_male_female[1:5,5]
+mean(m_fem_rur[!sapply(m_fem_rur, function(x)isTRUE(all.equal(x, 0)))]) 
+
+#mean attendancy value for lower-secondary education of rural females for all classes
+m_fem_rur <- urban_rural_area_male_female[7:11,5]
+mean(m_fem_rur[!sapply(m_fem_rur, function(x)isTRUE(all.equal(x, 0)))]) 
+
+#mean attendancy value for upper-secondary education of rural females for all classes
+m_fem_rur <- urban_rural_area_male_female[13:17,5]
+mean(m_fem_rur[!sapply(m_fem_rur, function(x)isTRUE(all.equal(x, 0)))]) 
+
 
 
 ################################################################################
@@ -209,42 +274,16 @@ teachers_data <- education_UKR_2012_2018 %>%
   select_if(~ length(unique(.)) > 1)
 View(teachers_data)
 
-
-#number of bullied students
-bullied_students <- education_UKR_2012_2018 %>% 
-  filter(`Statistical unit` == "BULLIED_STU:Bullied students") 
-View(bullied_students)
-
-
-
-
 # check what unique statistical units we can use for data exploration
 unique_value_teachers_data_units<-teachers_data[1]%>%
   unique()
 unique_value_teachers_data_units
-
 
 # select only the data in %
 teachers_data_perc <- teachers_data%>% 
   filter(str_detect(`Unit of measure`, "PT:Percentage")) 
   #select_if(~ length(unique(.)) > 1)
 View(teachers_data_perc)
-
-
-
-
-
-qualified_trained_teachers <- education_UKR_2012_2018 %>% 
-  filter(`Statistical unit` == "FTP:Percentage of female teachers") %>%
-  select_if(~ length(unique(.)) > 1)
-View(qualified_trained_teachers)
-
-
-
-
-
-
-
 
 # try to get information about what rows has less missing values
 teachers_data_no_missing_vals <- teachers_data[which.max(rowSums(!is.na(teachers_data))),]
@@ -307,18 +346,9 @@ p
 ################ (bac, license, master) over the years 2012-2018. ##############
 ################################################################################
 
-students_from_country <- education_UKR_2012_2018 %>% 
-  filter(`Country / region of origin` != "W00:All countries") %>%
-  select_if(~ length(unique(.)) > 1) 
-View(students_country)
-
-
- 
 students_to_country <- education_UKR_2012_2018 %>% 
   filter(`Destination region` != "W00:All countries") %>%
   select_if(~ length(unique(.)) > 1)
-
-
 
 # check what unique statistical units we can use for data exploration
 unique_value_students_to_country<-students_to_country[1]%>%
@@ -341,11 +371,7 @@ euroclust
 plot(euroclust, labels=students_to_country_mobile$`Destination region`)
 
 
-
-
-
 # re-structure data
-
 final_df_students_mobile <- t(students_to_country_mobile)
 final_df_students_mobile
 final_df_students_mobile <- apply(final_df_students_mobile[-c(1), ],1,function(x) log(as.numeric(x)))
@@ -359,17 +385,17 @@ colnames(final_df_students_mobile) <-c("years","Sub_Saharan_Africa", "South_and_
 final_df_students_mobile
 
 p <- plot_ly(final_df_students_mobile,    type = 'scatter', mode = 'lines') %>%
-  add_trace(x = ~`years`,y = ~`Sub-Saharan Africa`, name = 'Sub-Saharan Africa') %>%
-  add_trace(x = ~`years`,y = ~`South and West Asia`, name = 'South and West Asia') %>%
+  add_trace(x = ~`years`,y = ~`Sub_Saharan_Africa`, name = 'Sub-Saharan Africa') %>%
+  add_trace(x = ~`years`,y = ~`South_and_West_Asia`, name = 'South and West Asia') %>%
   add_trace(x = ~`years`,y = ~`Oceania`, name = 'Oceania') %>%
-  add_trace(x = ~`years`,y = ~`Central and Eastern Europe`, name = 'Central and Eastern Europe') %>%
-  add_trace(x = ~`years`,y = ~`Central Asia`, name = 'Central Asia') %>%
-  add_trace(x = ~`years`,y = ~`East Asia`, name = 'East Asia') %>%
-  add_trace(x = ~`years`,y = ~`Latin America`, name = 'Latin America') %>%
-  add_trace(x = ~`years`,y = ~`North America and Western Europe`, name = 'North America and Western Europe') %>%
-  add_trace(x = ~`years`,y = ~`East Asia and the Pacific`, name = 'East Asia and the Pacific') %>%
-  add_trace(x = ~`years`,y = ~`Arab States`, name = 'Arab States') %>%
-  add_trace(x = ~`years`,y = ~`Latin America and the Caribbean`, name = 'Latin America and the Caribbean') %>%
+  add_trace(x = ~`years`,y = ~`Central_and_Eastern_Europe`, name = 'Central and Eastern Europe') %>%
+  add_trace(x = ~`years`,y = ~`Central_Asia`, name = 'Central Asia') %>%
+  add_trace(x = ~`years`,y = ~`East_Asia`, name = 'East Asia') %>%
+  add_trace(x = ~`years`,y = ~`Latin_America`, name = 'Latin America') %>%
+  add_trace(x = ~`years`,y = ~`North_America_and_Western_Europe`, name = 'North America and Western Europe') %>%
+  add_trace(x = ~`years`,y = ~`East_Asia_and_the_Pacific`, name = 'East Asia and the Pacific') %>%
+  add_trace(x = ~`years`,y = ~`Arab_States`, name = 'Arab States') %>%
+  add_trace(x = ~`years`,y = ~`Latin_America_and_the_Caribbean`, name = 'Latin America and the Caribbean') %>%
   layout(
     title = "International mobility",
     yaxis = list(title = "Number of departing people (log scaled)"))
@@ -388,9 +414,6 @@ scatter.smooth(x=students_to_country_mobile_norm[,1], y=students_to_country_mobi
 
 students_to_country_mobile_norm <- as.data.frame(students_to_country_mobile_norm)
 students_to_country_mobile_norm
-
-
-
 
 final_df_students_mobile
 library("ggpubr")
@@ -416,7 +439,6 @@ grid.arrange(plot1, plot2, plot3)
 ############# male/female student  over the years (2012-2018) and make a   #######
 ################ prognosis about 2019.##############
 ################################################################################
-
 
 educ_patters <- education_UKR_2012_2018 %>% 
   filter(`Field of education` != "_T:Total") %>% 
@@ -445,15 +467,6 @@ unique_field_educ_patterns_tertiary
 # change char values to numbers
 rows_patterns <- nrow(educ_patterns_tertiary)
 rows_patterns
-# for (value in 1:rows_patterns) {
-#   if (educ_patterns_tertiary[value,2] == "F:Female") {
-#     educ_patterns_tertiary[value,2] = 1
-#   }else{
-#     educ_patterns_tertiary[value,2] = 2
-#   }
-# }
-educ_patterns_tertiary
-
 
 #Swap data
 educ_patterns_tertiary <-educ_patterns_tertiary[ ,c(3,1,2,4,5,6)]
@@ -462,7 +475,6 @@ educ_patterns_tertiary
 # Order variables
 educ_patterns_tertiary <- educ_patterns_tertiary[order(educ_patterns_tertiary$`Field of education`),]
 educ_patterns_tertiary
-
 
 #append extra variable
 Value <-c(1:40)
@@ -479,21 +491,11 @@ educ_patterns_tertiary
 glimpse(educ_patterns_tertiary)
 
 
-# Remove college name before clustering
-
 gower_dist <- daisy(educ_patterns_tertiary,
                     metric = "gower")
-
-# Check attributes to ensure the correct methods are being used
-# (I = interval, N = nominal)
-# Note that despite logratio being called, 
-# the type remains coded as "I"
-
 summary(gower_dist)
 gower_mat <- as.matrix(gower_dist)
 gower_mat
-
-
 
 # Output most similar pair
 educ_patterns_tertiary[
@@ -508,36 +510,30 @@ educ_patterns_tertiary[
 # Calculate silhouette width for many k using PAM
 
 sil_width <- c(NA)
-
 for(i in 2:10){
-  
   pam_fit <- pam(gower_dist,
                  diss = TRUE,
                  k = i)
-  
   sil_width[i] <- pam_fit$silinfo$avg.width
-  
 }
 
 # Plot sihouette width (higher is better)
-
 plot(1:10, sil_width,
      xlab = "Number of clusters",
      ylab = "Silhouette Width")
 lines(1:10, sil_width)
 
-
-pam_fit <- pam(gower_dist, diss = TRUE, k = 6)
+tic("run clustering")
+pam_fit <- pam(gower_dist, diss = TRUE, k = 2)
 
 pam_results <- educ_patterns_tertiary%>%
   mutate(cluster = pam_fit$clustering) %>%
   group_by(cluster) %>%
   do(the_summary = summary(.))
-
+toc()
 pam_results$the_summary
 
-
-educ_patterns_tertiary[pam_fit$medoids, ]
+educ_patterns_tertiary[pam_fit$medoids,]
 
 tsne_obj <- Rtsne(gower_dist, perplexity = 1.5 ,is_distance = TRUE)
 
